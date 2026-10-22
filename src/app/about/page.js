@@ -3,6 +3,7 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import { siteConfig } from "@/lib/site";
+import AboutCarousel from "@/components/sections/AboutCarousel";
 
 export const metadata = {
   title: "About Us",
@@ -110,6 +111,7 @@ export default function AboutPage() {
         </Container>
       </section>
 
+
       {/* Story & Philosophy */}
       <section className="py-20 bg-surface-alt">
         <Container>
@@ -170,22 +172,14 @@ export default function AboutPage() {
             highlightedWord="Values"
           />
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mt-14">
-            {values.map((v, i) => (
-              <Card key={i} className="p-8 border border-border hover:border-primary/50 transition-all hover:shadow-lg">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-6">
-                  {v.icon}
-                </div>
-                <h3 className="text-lg font-bold text-text-primary mb-2">{v.title}</h3>
-                <p className="text-sm text-text-secondary leading-relaxed">{v.description}</p>
-              </Card>
-            ))}
+          <div className="mt-14">
+            <AboutCarousel />
           </div>
         </Container>
       </section>
 
       {/* Team Section */}
-      <section id="team" className="py-24 bg-surface-alt">
+      {/* <section id="team" className="py-24 bg-surface-alt">
         <Container>
           <SectionHeading
             eyebrow="Leadership"
@@ -207,7 +201,7 @@ export default function AboutPage() {
             ))}
           </div>
         </Container>
-      </section>
+      </section> */}
 
       {/* Bottom CTA */}
       <section className="py-20 gradient-dark text-white text-center">

@@ -3,6 +3,7 @@ export const services = [
     id: "branding",
     title: "Creative Branding",
     shortTitle: "Branding",
+    category: "DESIGN",
     description:
       "We craft distinctive brand identities that resonate with your audience and leave lasting impressions. From logo design to complete brand systems.",
     icon: "palette",
@@ -12,12 +13,13 @@ export const services = [
       "Brand Guidelines & Systems",
       "Packaging Design",
     ],
-    image: "/images/projects/branding.jpg",
+    image: "/images/services/branding.jpg",
   },
   {
     id: "web",
     title: "Web Design & Development",
     shortTitle: "Web Design",
+    category: "DEVELOPMENT",
     description:
       "Beautiful, high-performance websites that convert visitors into customers. Responsive, fast, and built with cutting-edge technology.",
     icon: "code",
@@ -27,12 +29,13 @@ export const services = [
       "CMS Integration",
       "Performance Optimization",
     ],
-    image: "/images/projects/web-design.jpg",
+    image: "/images/services/web-design.jpg",
   },
   {
     id: "uiux",
     title: "UI/UX Design",
     shortTitle: "UI/UX",
+    category: "DESIGN",
     description:
       "User-centered design that delights and engages. We create intuitive digital experiences backed by research and creative excellence.",
     icon: "layers",
@@ -42,12 +45,13 @@ export const services = [
       "Mobile App Design",
       "Design Systems",
     ],
-    image: "/images/projects/uiux.jpg",
+    image: "/images/services/uiux.jpg",
   },
   {
     id: "marketing",
     title: "Digital Marketing",
     shortTitle: "Marketing",
+    category: "STRATEGY",
     description:
       "Data-driven strategies that amplify your brand's reach. We combine creativity with analytics to deliver measurable results.",
     icon: "trending",
@@ -57,12 +61,13 @@ export const services = [
       "SEO & SEM",
       "Campaign Management",
     ],
-    image: "/images/projects/marketing.jpg",
+    image: "/images/services/marketing.jpg",
   },
   {
     id: "video",
     title: "Video Production",
     shortTitle: "Video",
+    category: "PRODUCTION",
     description:
       "Cinematic storytelling that captures attention and drives engagement. From concept to final cut, we bring your stories to life.",
     icon: "film",
@@ -72,6 +77,6 @@ export const services = [
       "Social Media Content",
       "Event Coverage",
     ],
-    image: "/images/projects/video.jpg",
+    image: "/images/services/video.jpg",
   },
 ];

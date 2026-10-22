@@ -1,183 +1,425 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import Container from "@/components/ui/Container";
-import SectionHeading from "@/components/ui/SectionHeading";
-import Card from "@/components/ui/Card";
-import Button from "@/components/ui/Button";
+import { useLenis } from "lenis/react";
+import "./ServicesPreview.css";
 import { services } from "@/lib/services";
 
-function ServiceIcon({ icon }) {
-  switch (icon) {
-    case "palette":
-      return (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
-          <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
-          <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
-          <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
-          <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
-        </svg>
-      );
-    case "code":
-      return (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="16 18 22 12 16 6" />
-          <polyline points="8 6 2 12 8 18" />
-        </svg>
-      );
-    case "layers":
-      return (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polygon points="12 2 2 7 12 12 22 7 12 2" />
-          <polyline points="2 17 12 22 22 17" />
-          <polyline points="2 12 12 17 22 12" />
-        </svg>
-      );
-    case "trending":
-      return (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-          <polyline points="17 6 23 6 23 12" />
-        </svg>
-      );
-    case "film":
-      return (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" />
-          <line x1="7" y1="2" x2="7" y2="22" />
-          <line x1="17" y1="2" x2="17" y2="22" />
-          <line x1="2" y1="12" x2="22" y2="12" />
-          <line x1="2" y1="7" x2="7" y2="7" />
-          <line x1="2" y1="17" x2="7" y2="17" />
-          <line x1="17" y1="17" x2="22" y2="17" />
-          <line x1="17" y1="7" x2="22" y2="7" />
-        </svg>
-      );
-    default:
-      return (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-        </svg>
-      );
-  }
-}
-
 export default function ServicesPreview() {
-  const sectionRef = useRef(null);
+  const containerRef = useRef(null);
+  const cardRefs = useRef([]);
+  const metricsRef = useRef({ top: 0, scrollable: 1 });
+  const targetProgressRef = useRef(0);
+  const currentProgressRef = useRef(0);
+  const activeIndexRef = useRef(0);
+  const isRunningRef = useRef(true);
 
-  useEffect(() => {
-    const section = sectionRef.current;
-    if (!section) return;
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [expandedIndex, setExpandedIndex] = useState(null);
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("revealed");
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
+  const lenis = useLenis();
 
-    const elements = section.querySelectorAll(".reveal");
-    elements.forEach((el) => observer.observe(el));
-
-    return () => observer.disconnect();
+  /* ── 1. Cache layout metrics on resize & mount (Zero layout thrashing) ── */
+  const updateMetrics = useCallback(() => {
+    if (!containerRef.current) return;
+    const top = containerRef.current.offsetTop;
+    const height = containerRef.current.offsetHeight;
+    const scrollable = Math.max(1, height - window.innerHeight);
+    metricsRef.current = { top, scrollable };
   }, []);
 
+  useEffect(() => {
+    updateMetrics();
+    window.addEventListener("resize", updateMetrics, { passive: true });
+    // Re-check after font/images load
+    const timer = setTimeout(updateMetrics, 500);
+    return () => {
+      window.removeEventListener("resize", updateMetrics);
+      clearTimeout(timer);
+    };
+  }, [updateMetrics]);
+
+  /* ── 2. Track smooth scroll position (Lenis sync with window fallback) ── */
+  const updateProgressFromScroll = useCallback((scrollY) => {
+    const { top, scrollable } = metricsRef.current;
+    const scrolled = scrollY - top;
+    const raw = Math.min(Math.max(scrolled / scrollable, 0), 1);
+    targetProgressRef.current = raw;
+  }, []);
+
+  // Listen via Lenis if available
+  useLenis((lenisInstance) => {
+    if (lenisInstance) {
+      updateProgressFromScroll(lenisInstance.scroll);
+    }
+  });
+
+  // Native scroll fallback
+  useEffect(() => {
+    const onScroll = () => {
+      if (!window.__lenis) {
+        updateProgressFromScroll(window.scrollY);
+      }
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [updateProgressFromScroll]);
+
+  /* ── 3. High-Performance Direct-DOM RAF Loop (120 FPS, 0 React re-renders) ── */
+  useEffect(() => {
+    isRunningRef.current = true;
+    let animId;
+    const total = services.length;
+    const lerpFactor = 0.16; // Perfectly responsive, buttery momentum
+
+    // Initialize initial card positions immediately
+    const applyTransforms = (progressVal) => {
+      const floatIndex = progressVal * (total - 1);
+      const cards = cardRefs.current;
+
+      for (let i = 0; i < total; i++) {
+        const el = cards[i];
+        if (!el) continue;
+
+        const delta = i - floatIndex;
+        const absDelta = Math.abs(delta);
+
+        // 3D Helix spatial geometry
+        const yPos = delta * 245;
+        const xPos = Math.sin(delta * 0.88) * 215;
+        const zPos = -absDelta * 145;
+        const rotateY = Math.sin(delta * 0.88) * -22;
+        const rotateX = delta * -3.2;
+        const rotateZ = delta * -1.8;
+        const scale = Math.max(0.44, 1 - absDelta * 0.14);
+        const opacity = Math.max(0.12, 1 - absDelta * 0.32);
+        const zIndex = Math.round(50 - absDelta * 10);
+
+        el.style.transform = `translate3d(calc(-50% + ${xPos}px), calc(-50% + ${yPos}px), ${zPos}px) scale(${scale}) rotateY(${rotateY}deg) rotateX(${rotateX}deg) rotateZ(${rotateZ}deg)`;
+        el.style.opacity = opacity;
+        el.style.zIndex = zIndex;
+
+        // Toggle active border styling directly on DOM for zero-delay feedback
+        if (absDelta < 0.5) {
+          el.classList.add("active");
+        } else {
+          el.classList.remove("active");
+        }
+      }
+
+      // Only trigger React state update when the integer index actually changes
+      const newActive = Math.min(
+        total - 1,
+        Math.max(0, Math.round(floatIndex))
+      );
+      if (newActive !== activeIndexRef.current) {
+        activeIndexRef.current = newActive;
+        setActiveIndex(newActive);
+      }
+    };
+
+    const renderLoop = () => {
+      if (!isRunningRef.current) return;
+
+      const target = targetProgressRef.current;
+      const current = currentProgressRef.current;
+      const diff = target - current;
+
+      if (Math.abs(diff) > 0.0001) {
+        currentProgressRef.current += diff * lerpFactor;
+        applyTransforms(currentProgressRef.current);
+      } else if (current !== target) {
+        currentProgressRef.current = target;
+        applyTransforms(target);
+      }
+
+      animId = requestAnimationFrame(renderLoop);
+    };
+
+    // Initial render
+    applyTransforms(0);
+    animId = requestAnimationFrame(renderLoop);
+
+    return () => {
+      isRunningRef.current = false;
+      cancelAnimationFrame(animId);
+    };
+  }, []);
+
+  /* ── 4. Smooth jump using Lenis or window scroll ── */
+  const jumpToIndex = useCallback(
+    (index) => {
+      updateMetrics();
+      const { top, scrollable } = metricsRef.current;
+      const targetY = top + (index / (services.length - 1)) * scrollable;
+
+      const activeLenis = lenis || window.__lenis;
+      if (activeLenis) {
+        activeLenis.scrollTo(targetY, {
+          duration: 1.1,
+          easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        });
+      } else {
+        window.scrollTo({
+          top: targetY,
+          behavior: "smooth",
+        });
+      }
+    },
+    [lenis, updateMetrics]
+  );
+
+  /* ── 5. Fullscreen modal expand / collapse ── */
+  const toggleExpand = useCallback((index) => {
+    setExpandedIndex((prev) => (prev === index ? null : index));
+  }, []);
+
+  /* ── 6. Keyboard navigation (Arrow keys + Escape) ── */
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        setExpandedIndex(null);
+      } else if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+        if (expandedIndex === null) {
+          jumpToIndex(Math.min(services.length - 1, activeIndexRef.current + 1));
+        }
+      } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+        if (expandedIndex === null) {
+          jumpToIndex(Math.max(0, activeIndexRef.current - 1));
+        }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [expandedIndex, jumpToIndex]);
+
+  const active = services[activeIndex] || services[0];
+
   return (
-    <section ref={sectionRef} id="services-preview" data-theme="dark" className="py-24 lg:py-32 relative bg-[#0a0a0a]">
-      <Container>
-        <div className="reveal">
-          <SectionHeading
-            eyebrow="What We Do"
-            title="Services Built for Digital Dominance"
-            highlightedWord="Dominance"
-            description="We fuse strategy, design, and state-of-the-art engineering to help visionary brands scale."
-            dark
-          />
-        </div>
+    <section
+      ref={containerRef}
+      id="services-preview"
+      className="runway-container"
+      data-theme="dark"
+    >
+      {/* ── Sticky Fullscreen Viewport (100vh) ── */}
+      <div className="runway-sticky">
+        {/* Background ambient lighting */}
+        <div className="runway-bg-glow" />
 
-        {/* Services Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8 mt-14">
-          {services.map((service, index) => (
-            <div
-              key={service.id}
-              className="reveal"
-              style={{ transitionDelay: `${index * 80}ms` }}
-            >
-              <Card className="group h-full flex flex-col justify-between p-8 border border-white/10 hover:border-[#e60000]/50 transition-all duration-300 hover:shadow-xl hover:shadow-[#e60000]/10 relative overflow-hidden">
-                {/* Glow accent in background on hover */}
-                <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-primary/10 opacity-0 group-hover:opacity-100 blur-2xl transition-opacity duration-500 pointer-events-none" />
+        {/* ── Top Bar Header ── */}
+        <header className="runway-header">
+          <div className="runway-header-left">
+            <span className="runway-badge">CAPABILITIES</span>
+            <h2 className="runway-title">OUR SERVICES</h2>
+            <p className="runway-subtitle-text">
+              SCROLL TO WALK THE SHOW • CLICK IMAGE TO EXPAND
+            </p>
+          </div>
+          <div className="runway-header-right">
+            <span className="runway-header-counter">
+              {String(activeIndex + 1).padStart(2, "0")} /{" "}
+              {String(services.length).padStart(2, "0")}
+            </span>
+          </div>
+        </header>
 
-                <div>
-                  {/* Top Bar: Icon + Number */}
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="w-14 h-14 rounded-2xl bg-[#e60000]/10 border border-[#e60000]/20 flex items-center justify-center text-[#e60000] group-hover:bg-[#e60000] group-hover:text-white transition-all duration-300 shadow-sm">
-                      <ServiceIcon icon={service.icon} />
+        {/* ── LEFT PANEL: Index Navigation ── */}
+        <aside className="runway-left-panel">
+          <nav className="runway-index-nav" aria-label="Services List">
+            {services.map((service, i) => {
+              const isActive = i === activeIndex;
+              return (
+                <button
+                  key={service.id}
+                  type="button"
+                  className={`runway-index-row ${isActive ? "active" : ""}`}
+                  onClick={() => jumpToIndex(i)}
+                  aria-label={`Jump to ${service.title}`}
+                >
+                  <span className="runway-row-num">
+                    {String(i).padStart(2, "0")}
+                  </span>
+                  <span className="runway-row-name">
+                    {service.shortTitle.toUpperCase()}
+                  </span>
+                  <span className="runway-row-cat">{service.category}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </aside>
+
+        {/* ── CENTER: Fullscreen 3D Helix Stage ── */}
+        <div className="runway-helix-viewport">
+          <div className="runway-helix-stage">
+            {services.map((service, i) => {
+              return (
+                <div
+                  key={service.id}
+                  ref={(el) => (cardRefs.current[i] = el)}
+                  className="runway-card"
+                  onClick={() => toggleExpand(i)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") toggleExpand(i);
+                  }}
+                  aria-label={`View ${service.title} in full screen`}
+                >
+                  <div className="runway-card-inner">
+                    <img
+                      src={service.image}
+                      alt={service.title}
+                      className="runway-card-img"
+                      loading={i < 2 ? "eager" : "lazy"}
+                      draggable={false}
+                    />
+                    <div className="runway-card-gradient" />
+
+                    {/* Index watermark */}
+                    <div className="runway-card-tag">
+                      <span className="runway-card-index">
+                        {String(i).padStart(2, "0")}
+                      </span>
+                      <span className="runway-card-name">
+                        {service.shortTitle}
+                      </span>
                     </div>
-                    <span className="text-2xl font-display font-bold text-white/15 group-hover:text-[#e60000]/30 transition-colors">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
+
+                    {/* Expand icon on hover */}
+                    <div className="runway-card-action">
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="15 3 21 3 21 9" />
+                        <polyline points="9 21 3 21 3 15" />
+                        <line x1="21" y1="3" x2="14" y2="10" />
+                        <line x1="3" y1="21" x2="10" y2="14" />
+                      </svg>
+                      <span>EXPAND</span>
+                    </div>
                   </div>
-
-                  {/* Title & Description */}
-                  <h3 className="text-xl font-bold font-display text-white group-hover:text-[#e60000] transition-colors">
-                    {service.title}
-                  </h3>
-                  <p className="text-sm text-white/60 mt-3 leading-relaxed">
-                    {service.description}
-                  </p>
-
-                  {/* Features list */}
-                  <ul className="mt-6 space-y-2.5">
-                    {service.features.map((feature, fIndex) => (
-                      <li key={fIndex} className="flex items-center gap-2.5 text-xs font-medium text-white/50">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#e60000] flex-shrink-0" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
                 </div>
-
-                {/* Card Action Link */}
-                <div className="mt-8 pt-6 border-t border-white/10">
-                  <Link
-                    href={`/services#${service.id}`}
-                    className="inline-flex items-center gap-2 text-sm font-semibold text-white/70 group-hover:text-[#e60000] transition-colors"
-                  >
-                    <span>Learn More</span>
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="group-hover:translate-x-1 transition-transform"
-                    >
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                      <polyline points="12 5 19 12 12 19" />
-                    </svg>
-                  </Link>
-                </div>
-              </Card>
-            </div>
-          ))}
+              );
+            })}
+          </div>
         </div>
 
-        {/* View All CTA */}
-        <div className="reveal text-center mt-16">
-          <Button href="/services" variant="outline" size="lg">
-            Explore All Capabilities
+        {/* ── RIGHT PANEL: Active Service Details ── */}
+        <aside className="runway-right-panel" key={active.id}>
+          <div className="runway-meta-header">
+            <span className="runway-code">
+              LV-{String(activeIndex).padStart(2, "0")}
+            </span>
+            <span className="runway-fraction">
+              {String(activeIndex + 1).padStart(2, "0")} /{" "}
+              {String(services.length).padStart(2, "0")}
+            </span>
+          </div>
+
+          <h3 className="runway-panel-title">{active.title}</h3>
+
+          <div className="runway-divider" />
+
+          <dl className="runway-specs">
+            <div className="runway-spec-item">
+              <dt>CATEGORY</dt>
+              <dd>{active.category}</dd>
+            </div>
+            <div className="runway-spec-item">
+              <dt>TYPE</dt>
+              <dd>{active.shortTitle.toUpperCase()}</dd>
+            </div>
+            <div className="runway-spec-item">
+              <dt>SCOPE</dt>
+              <dd>{active.features.length} CAPABILITIES</dd>
+            </div>
+          </dl>
+
+          <p className="runway-panel-desc">{active.description}</p>
+
+          <ul className="runway-features-list">
+            {active.features.map((feat, fi) => (
+              <li key={fi}>
+                <span className="runway-feature-dot" />
+                <span>{feat}</span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="runway-actions">
+            <Link
+              href={`/services#${active.id}`}
+              className="runway-explore-btn"
+            >
+              <span>Explore Service</span>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </Link>
+
+            <button
+              type="button"
+              className="runway-expand-trigger"
+              onClick={() => toggleExpand(activeIndex)}
+              aria-label="View full screen"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+              </svg>
+              <span>Full Screen</span>
+            </button>
+          </div>
+        </aside>
+
+        {/* ── Bottom Controls ── */}
+        <footer className="runway-bottom-bar">
+          <div className="runway-bottom-dots">
+            {services.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                className={`runway-dot ${i === activeIndex ? "active" : ""}`}
+                onClick={() => jumpToIndex(i)}
+                aria-label={`Go to slide ${i + 1}`}
+              />
+            ))}
+          </div>
+
+          <Link href="/services" className="runway-all-link">
+            <span>Explore All Capabilities</span>
             <svg
-              width="18"
-              height="18"
+              width="16"
+              height="16"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -188,9 +430,107 @@ export default function ServicesPreview() {
               <line x1="5" y1="12" x2="19" y2="12" />
               <polyline points="12 5 19 12 12 19" />
             </svg>
-          </Button>
+          </Link>
+        </footer>
+      </div>
+
+      {/* ── FULL SCREEN MODAL / LIGHTBOX ── */}
+      {expandedIndex !== null && (
+        <div
+          className="runway-fullscreen-modal"
+          onClick={() => setExpandedIndex(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="runway-modal-wrapper"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="runway-modal-close"
+              onClick={() => setExpandedIndex(null)}
+              aria-label="Close full screen view"
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+
+            <div className="runway-modal-hero">
+              <img
+                src={services[expandedIndex].image}
+                alt={services[expandedIndex].title}
+                className="runway-modal-img"
+              />
+              <div className="runway-modal-hero-gradient" />
+              <div className="runway-modal-hero-badge">
+                <span>LV-{String(expandedIndex).padStart(2, "0")}</span>
+                <span>{services[expandedIndex].category}</span>
+              </div>
+            </div>
+
+            <div className="runway-modal-body">
+              <span className="runway-modal-subtitle">
+                {services[expandedIndex].shortTitle.toUpperCase()}
+              </span>
+              <h2 className="runway-modal-title">
+                {services[expandedIndex].title}
+              </h2>
+              <p className="runway-modal-desc">
+                {services[expandedIndex].description}
+              </p>
+
+              <div className="runway-modal-features">
+                <h4 className="runway-modal-features-heading">
+                  KEY DELIVERABLES & CAPABILITIES
+                </h4>
+                <ul>
+                  {services[expandedIndex].features.map((feat, fi) => (
+                    <li key={fi}>
+                      <span className="runway-feature-dot" />
+                      <span>{feat}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="runway-modal-actions">
+                <Link
+                  href={`/services#${services[expandedIndex].id}`}
+                  className="runway-modal-cta"
+                  onClick={() => setExpandedIndex(null)}
+                >
+                  <span>View Complete Case Studies & Scope</span>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                    <polyline points="12 5 19 12 12 19" />
+                  </svg>
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
-      </Container>
+      )}
     </section>
   );
 }

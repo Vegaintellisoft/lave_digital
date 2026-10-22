@@ -56,6 +56,7 @@ export default function SmoothScroll({ children }) {
   return (
     <ReactLenis
       root
+      autoRaf
       options={{
         lerp: 0.09,
         duration: 1.2,

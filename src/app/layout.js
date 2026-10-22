@@ -29,7 +29,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className="antialiased">
       <head>
         {/* Google Fonts: Inter + Outfit for display headings */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
