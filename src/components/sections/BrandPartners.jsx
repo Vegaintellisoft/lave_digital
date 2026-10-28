@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Container from "@/components/ui/Container";
 
 // Real logo URLs from partner brands (hosted on vimimagic.in CDN for reference)
@@ -56,7 +57,7 @@ const ROW_1 = ALL_BRANDS.slice(0, 12);
 const ROW_2 = ALL_BRANDS.slice(12, 26);
 const ROW_3 = ALL_BRANDS.slice(26);
 
-function MarqueeRow({ brands, direction = "left", speed = 40 }) {
+function MarqueeRow({ brands, direction = "left", speed = 40, isVisible = true }) {
   const animName = direction === "left" ? "marquee-left" : "marquee-right";
   // Duplicate the array for seamless infinite scroll
   const doubled = [...brands, ...brands];
@@ -69,6 +70,7 @@ function MarqueeRow({ brands, direction = "left", speed = 40 }) {
           width: "max-content",
           gap: "3.25rem",
           animation: `${animName} ${speed}s linear infinite`,
+          animationPlayState: isVisible ? "running" : "paused",
         }}
       >
         {doubled.map((brand, i) => (
@@ -96,10 +98,28 @@ function MarqueeRow({ brands, direction = "left", speed = 40 }) {
 }
 
 export default function BrandPartners() {
+  const sectionRef = useRef(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting);
+      },
+      { rootMargin: "100px 0px" }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <section data-theme="light" className="bg-white text-neutral-900 pt-20 sm:pt-28 pb-16 sm:pb-24 select-none">
+    <section ref={sectionRef} data-theme="light" className="bg-white text-neutral-900 pt-10 sm:pt-14 pb-10 sm:pb-14 select-none">
       <Container>
-        <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-neutral-900 tracking-tight text-left mb-8 sm:mb-12 leading-tight">
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-neutral-900 tracking-tight text-left mb-6 sm:mb-8 leading-tight">
           Brands That Create Magic With Us
         </h2>
       </Container>
@@ -113,9 +133,9 @@ export default function BrandPartners() {
         }}
       >
         <div className="flex flex-col gap-2 px-4 md:gap-3 md:px-8">
-          <MarqueeRow brands={ROW_1} direction="left"  speed={38} />
-          <MarqueeRow brands={ROW_2} direction="right" speed={45} />
-          <MarqueeRow brands={ROW_3} direction="left"  speed={35} />
+          <MarqueeRow brands={ROW_1} direction="left"  speed={38} isVisible={isVisible} />
+          <MarqueeRow brands={ROW_2} direction="right" speed={45} isVisible={isVisible} />
+          <MarqueeRow brands={ROW_3} direction="left"  speed={35} isVisible={isVisible} />
         </div>
       </div>
     </section>

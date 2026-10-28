@@ -510,6 +510,16 @@ const CardSwap = forwardRef(
             card[axis] += velocity * h;
           }
         }
+        for (const axis of AXES) {
+          const snapThreshold = axis === "p" ? 0.0005 : 0.01;
+          if (
+            Math.abs(target[axis] - card[axis]) < snapThreshold &&
+            Math.abs(card.v[axis]) < snapThreshold
+          ) {
+            card[axis] = target[axis];
+            card.v[axis] = 0;
+          }
+        }
       };
 
       const scalar = (value, velocity, target, omega, zeta, dt) => {
@@ -523,11 +533,19 @@ const CardSwap = forwardRef(
           v += (k * (target - x) - d * v) * h;
           x += v * h;
         }
+        if (Math.abs(target - x) < 0.005 && Math.abs(v) < 0.005) {
+          x = target;
+          v = 0;
+        }
         return [x, v];
       };
 
       const frame = (time) => {
         state.raf = 0;
+        if (!state.inView || (typeof document !== "undefined" && document.visibilityState === "hidden")) {
+          state.last = 0;
+          return;
+        }
         const s = settingsRef.current;
         const dt = state.last
           ? Math.min(0.05, (time - state.last) / 1000)
@@ -630,6 +648,7 @@ const CardSwap = forwardRef(
       };
 
       const wake = () => {
+        if (!state.inView || (typeof document !== "undefined" && document.visibilityState === "hidden")) return;
         if (!state.raf) state.raf = requestAnimationFrame(frame);
       };
 
@@ -889,7 +908,20 @@ const CardSwap = forwardRef(
         if (position > 0) goTo(position);
       };
 
-      const onVisibility = () => schedule();
+      const onVisibility = () => {
+        if (document.visibilityState === "hidden") {
+          if (state.raf) {
+            cancelAnimationFrame(state.raf);
+            state.raf = 0;
+          }
+          clearTimeout(state.timer);
+          state.timer = 0;
+          state.last = 0;
+        } else if (state.inView) {
+          wake();
+          schedule();
+        }
+      };
 
       apiRef.current = {
         next: () => shift(1),
@@ -935,10 +967,25 @@ const CardSwap = forwardRef(
 
       const resizeObserver = new ResizeObserver(fit);
       resizeObserver.observe(root);
-      const intersectionObserver = new IntersectionObserver((entries) => {
-        state.inView = entries[entries.length - 1]?.isIntersecting ?? true;
-        schedule();
-      });
+      const intersectionObserver = new IntersectionObserver(
+        (entries) => {
+          const inView = entries[entries.length - 1]?.isIntersecting ?? true;
+          state.inView = inView;
+          if (!inView) {
+            if (state.raf) {
+              cancelAnimationFrame(state.raf);
+              state.raf = 0;
+            }
+            clearTimeout(state.timer);
+            state.timer = 0;
+            state.last = 0;
+          } else {
+            wake();
+            schedule();
+          }
+        },
+        { threshold: 0.05 }
+      );
       intersectionObserver.observe(root);
       root.addEventListener("pointermove", onMove);
       root.addEventListener("pointerleave", onLeave);

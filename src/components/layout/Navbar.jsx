@@ -35,8 +35,18 @@ export default function Navbar() {
     return () => clearTimeout(timer);
   }, []);
 
-  /* ── scroll & dynamic background theme detection ── */
+  /* ── scroll & dynamic background theme detection (throttled) ── */
   useEffect(() => {
+    let rafId = 0;
+    let cachedSections = null;
+    let cacheTimer = null;
+
+    const refreshSections = () => {
+      cachedSections = Array.from(
+        document.querySelectorAll("section, footer, [data-theme]")
+      );
+    };
+
     const handleScrollAndTheme = () => {
       const scrollY = window.scrollY;
       const isPastThreshold = scrollY > 30;
@@ -49,9 +59,8 @@ export default function Navbar() {
 
       // Check section beneath the navbar (~45px from top of viewport)
       const navbarY = 45;
-      const sections = Array.from(
-        document.querySelectorAll("section, footer, [data-theme]")
-      );
+      if (!cachedSections) refreshSections();
+      const sections = cachedSections;
 
       let foundTheme = null;
       for (const el of sections) {
@@ -114,13 +123,31 @@ export default function Navbar() {
       }
     };
 
+    // RAF-throttled scroll handler (runs at most once per frame)
+    const onScroll = () => {
+      if (!rafId) {
+        rafId = requestAnimationFrame(() => {
+          rafId = 0;
+          handleScrollAndTheme();
+        });
+      }
+    };
+
+    // Refresh cached sections once after font/images load
+    cacheTimer = setTimeout(refreshSections, 1200);
+
     handleScrollAndTheme();
-    window.addEventListener("scroll", handleScrollAndTheme, { passive: true });
-    window.addEventListener("resize", handleScrollAndTheme, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", () => {
+      refreshSections();
+      onScroll();
+    }, { passive: true });
 
     return () => {
-      window.removeEventListener("scroll", handleScrollAndTheme);
-      window.removeEventListener("resize", handleScrollAndTheme);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (rafId) cancelAnimationFrame(rafId);
+      if (cacheTimer) clearTimeout(cacheTimer);
     };
   }, [pathname]);
 

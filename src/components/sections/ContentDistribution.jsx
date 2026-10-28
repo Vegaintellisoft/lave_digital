@@ -117,6 +117,7 @@ const nodes = [
 
 export default function ContentDistribution() {
   const [activeId, setActiveId] = useState(null);
+  const [isInView, setIsInView] = useState(false);
   const sectionRef = useRef(null);
 
   useEffect(() => {
@@ -125,11 +126,17 @@ export default function ContentDistribution() {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) entry.target.classList.add("revealed");
+          if (entry.isIntersecting) {
+            entry.target.classList.add("revealed");
+            setIsInView(true);
+          } else {
+            setIsInView(false);
+          }
         });
       },
-      { threshold: 0.1 }
+      { threshold: 0.05 }
     );
+    observer.observe(section);
     section.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
     return () => observer.disconnect();
   }, []);
@@ -139,7 +146,7 @@ export default function ContentDistribution() {
       ref={sectionRef}
       id="content-distribution"
       data-theme="light"
-      className="py-12 md:py-20 lg:py-24 bg-white relative overflow-hidden flex flex-col items-center justify-center select-none"
+      className="py-10 md:py-14 lg:py-16 bg-white relative overflow-hidden flex flex-col items-center justify-center select-none"
     >
       {/* Background Grid Pattern with Radial Vignette */}
       <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.02)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,black,transparent)] pointer-events-none" />
@@ -195,7 +202,10 @@ export default function ContentDistribution() {
         {/* Dashed Outer Circle Rotating Counter-Clockwise */}
         <div
           className="absolute inset-0 flex items-center justify-center z-0 animate-spin-reverse-slow pointer-events-none"
-          style={{ willChange: "transform" }}
+          style={{
+            willChange: "transform",
+            animationPlayState: isInView ? "running" : "paused",
+          }}
         >
           <svg width="600" height="600" viewBox="0 0 600 600" className="opacity-80">
             <circle
@@ -213,7 +223,10 @@ export default function ContentDistribution() {
         {/* Iridescent Rainbow Concentric Rings Rotating Clockwise */}
         <div
           className="absolute inset-0 flex items-center justify-center z-10 animate-spin-slow pointer-events-none"
-          style={{ willChange: "transform" }}
+          style={{
+            willChange: "transform",
+            animationPlayState: isInView ? "running" : "paused",
+          }}
         >
           <svg width="600" height="600" viewBox="0 0 600 600" className="opacity-80">
             <defs>
@@ -269,6 +282,7 @@ export default function ContentDistribution() {
               height: "220px",
               background: "radial-gradient(circle, rgba(230,0,0,0.15) 0%, rgba(230,0,0,0.05) 60%, transparent 75%)",
               animation: "pulse 2.5s ease-in-out infinite",
+              animationPlayState: isInView ? "running" : "paused",
             }}
           />
         </div>

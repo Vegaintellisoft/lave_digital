@@ -24,7 +24,7 @@ export default function ContactPreview() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="contact-preview" data-theme="light" className="py-24 lg:py-32 bg-white relative overflow-hidden">
+    <section ref={sectionRef} id="contact-preview" data-theme="light" className="pt-6 pb-16 sm:pt-8 sm:pb-20 lg:pt-10 lg:pb-24 bg-white relative overflow-hidden">
       {/* Decorative elements */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
         <div

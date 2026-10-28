@@ -19,7 +19,7 @@ const stats = [
 
 export default function StatsRibbon() {
   return (
-    <section data-theme="light" className="bg-white text-black py-16 sm:py-20 md:py-24 border-y border-neutral-200 relative select-none">
+    <section data-theme="light" className="bg-white text-black py-10 sm:py-12 md:py-14 border-y border-neutral-200 relative select-none">
       <Container>
         <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-neutral-200">
           {stats.map((stat, i) => (

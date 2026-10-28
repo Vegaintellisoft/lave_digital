@@ -82,7 +82,7 @@ export default function CTA() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="process" data-theme="light" className="py-24 lg:py-32">
+    <section ref={sectionRef} id="process" data-theme="light" className="py-12 lg:py-16">
       <Container>
         <div className="reveal">
           <SectionHeading
@@ -101,7 +101,7 @@ export default function CTA() {
               className="reveal process-connector"
               style={{ transitionDelay: `${i * 120}ms` }}
             >
-              <div className="flex gap-6 pb-10 group">
+              <div className={`flex gap-6 ${i === processSteps.length - 1 ? "pb-0" : "pb-7"} group`}>
                 {/* Step Number Circle */}
                 <div className="flex-shrink-0">
                   <div className="w-14 h-14 rounded-2xl gradient-primary flex items-center justify-center text-white font-display font-bold text-lg shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform duration-300">

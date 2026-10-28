@@ -17,11 +17,26 @@ export default function Hero() {
   const narrativeBlockRef = useRef(null);
 
   useEffect(() => {
-    // Autoplay background video safely
-    if (videoRef.current) {
-      videoRef.current.defaultMuted = true;
-      videoRef.current.muted = true;
-      videoRef.current.play().catch(() => {});
+    const video = videoRef.current;
+    if (video) {
+      video.defaultMuted = true;
+      video.muted = true;
+    }
+
+    // Pause video when Hero is out of viewport to save CPU / GPU decoding
+    let videoObserver = null;
+    if (heroRef.current && video) {
+      videoObserver = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            video.play().catch(() => {});
+          } else {
+            video.pause();
+          }
+        },
+        { threshold: 0.05 }
+      );
+      videoObserver.observe(heroRef.current);
     }
 
     if (typeof window === "undefined") return;
@@ -232,7 +247,10 @@ export default function Hero() {
       }
     }, heroRef);
 
-    return () => ctx.revert();
+    return () => {
+      ctx.revert();
+      videoObserver?.disconnect();
+    };
   }, []);
 
   // Helper to split a word into individual masked letter spans

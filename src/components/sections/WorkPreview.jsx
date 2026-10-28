@@ -50,7 +50,7 @@ export default function WorkPreview() {
       ref={sectionRef}
       id="work-preview"
       data-theme="light"
-      className="py-24 lg:py-32 bg-surface-alt overflow-hidden"
+      className="py-12 lg:py-16 bg-surface-alt overflow-hidden"
     >
       <Container>
         <div className="reveal">

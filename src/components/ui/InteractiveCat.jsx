@@ -25,22 +25,15 @@ export default function InteractiveCat({ className = "" }) {
   const mouseRef = useRef({ x: 0.5, y: 0.5 });
   const currentRef = useRef({ x: 0.5, y: 0.5 });
   const [isWobbling, setIsWobbling] = useState(false);
+  const isVisibleRef = useRef(false);
+  const ringTweenRef = useRef(null);
+  const blinkTimeoutRef = useRef(null);
+  const isLoopingRef = useRef(false);
 
   const lerp = (a, b, t) => a + (b - a) * t;
 
-  // ── Mouse & Saccade Tracking Loop ──
-  const animate = useCallback(() => {
-    const cur = currentRef.current;
-    const target = mouseRef.current;
-
-    // Smooth inertia interpolation
-    cur.x = lerp(cur.x, target.x, 0.1);
-    cur.y = lerp(cur.y, target.y, 0.1);
-
-    // Normalised offset from centre (-1 to +1)
-    const dx = (cur.x - 0.5) * 2;
-    const dy = (cur.y - 0.5) * 2;
-
+  // ── Render transforms once ──
+  const applyCatTransforms = useCallback((dx, dy) => {
     // 1. Pupils responsive tracking within eye sockets
     const pupilX = dx * 11;
     const pupilY = dy * 9;
@@ -53,33 +46,72 @@ export default function InteractiveCat({ className = "" }) {
 
     // 2. 3D Perspective Tilt on the sphere container
     if (containerRef.current) {
-      const tiltX = -dy * 10; // degrees
-      const tiltY = dx * 12; // degrees
+      const tiltX = -dy * 10;
+      const tiltY = dx * 12;
       containerRef.current.style.transform = `perspective(800px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
     }
 
-    // 3. Shifting specular gloss highlight (simulates dynamic 3D light reflection)
+    // 3. Shifting specular gloss highlight
     if (shineRef.current) {
       const shineShiftX = dx * 10;
       const shineShiftY = dy * 8;
       shineRef.current.style.transform = `translate(${shineShiftX}px, ${shineShiftY}px)`;
     }
 
-    // 4. Subtle parallax counter-shift on branding text for depth
+    // 4. Parallax counter-shift on branding text
     if (textGroupRef.current) {
       const textX = dx * 3.5;
       const textY = dy * 2.5;
       textGroupRef.current.style.transform = `translate(${textX}px, ${textY}px)`;
     }
-
-    rafRef.current = requestAnimationFrame(animate);
   }, []);
 
-  // ── Natural Blinking Animation Cycle ──
-  useEffect(() => {
-    let blinkTimeout;
+  // ── Mouse & Saccade Tracking Loop (stops when settled or off-screen) ──
+  const animate = useCallback(() => {
+    if (!isVisibleRef.current) {
+      isLoopingRef.current = false;
+      rafRef.current = null;
+      return;
+    }
+
+    const cur = currentRef.current;
+    const target = mouseRef.current;
+
+    const dxDiff = target.x - cur.x;
+    const dyDiff = target.y - cur.y;
+
+    if (Math.abs(dxDiff) < 0.0008 && Math.abs(dyDiff) < 0.0008) {
+      cur.x = target.x;
+      cur.y = target.y;
+      applyCatTransforms((cur.x - 0.5) * 2, (cur.y - 0.5) * 2);
+      isLoopingRef.current = false;
+      rafRef.current = null;
+      return;
+    }
+
+    cur.x = lerp(cur.x, target.x, 0.12);
+    cur.y = lerp(cur.y, target.y, 0.12);
+
+    applyCatTransforms((cur.x - 0.5) * 2, (cur.y - 0.5) * 2);
+
+    rafRef.current = requestAnimationFrame(animate);
+  }, [applyCatTransforms]);
+
+  const wakeLoop = useCallback(() => {
+    if (!isVisibleRef.current) return;
+    if (!isLoopingRef.current) {
+      isLoopingRef.current = true;
+      rafRef.current = requestAnimationFrame(animate);
+    }
+  }, [animate]);
+
+  // ── Natural Blinking Animation Cycle (runs only when visible) ──
+  const scheduleBlink = useCallback(() => {
+    if (blinkTimeoutRef.current) clearTimeout(blinkTimeoutRef.current);
+    if (!isVisibleRef.current) return;
 
     const triggerBlink = () => {
+      if (!isVisibleRef.current) return;
       const leftEye = leftEyeGroupRef.current;
       const rightEye = rightEyeGroupRef.current;
       if (!leftEye || !rightEye) return;
@@ -88,13 +120,11 @@ export default function InteractiveCat({ className = "" }) {
 
       const blinkTl = gsap.timeline({
         onComplete: () => {
-          // Schedule next blink in 2.5 to 5.5 seconds
-          const nextDelay = 2500 + Math.random() * 3000;
-          blinkTimeout = setTimeout(triggerBlink, nextDelay);
+          const nextDelay = 2800 + Math.random() * 3200;
+          blinkTimeoutRef.current = setTimeout(triggerBlink, nextDelay);
         },
       });
 
-      // Quick lid close
       blinkTl.to([leftEye, rightEye], {
         scaleY: 0.06,
         duration: 0.09,
@@ -102,14 +132,12 @@ export default function InteractiveCat({ className = "" }) {
         transformOrigin: "center center",
       });
 
-      // Lid open
       blinkTl.to([leftEye, rightEye], {
         scaleY: 1,
         duration: 0.12,
         ease: "power2.out",
       });
 
-      // Occasional playful double blink
       if (isDoubleBlink) {
         blinkTl.to(
           [leftEye, rightEye],
@@ -128,10 +156,7 @@ export default function InteractiveCat({ className = "" }) {
       }
     };
 
-    // Initial blink after mount
-    blinkTimeout = setTimeout(triggerBlink, 2000);
-
-    return () => clearTimeout(blinkTimeout);
+    blinkTimeoutRef.current = setTimeout(triggerBlink, 2000);
   }, []);
 
   // ── Neon Ring Ambient Breathing Glow ──
@@ -145,10 +170,48 @@ export default function InteractiveCat({ className = "" }) {
       repeat: -1,
       yoyo: true,
       ease: "sine.inOut",
+      paused: true,
     });
+    ringTweenRef.current = ringTween;
 
     return () => ringTween.kill();
   }, []);
+
+  // ── Intersection Observer: stop everything when off-screen ──
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const inView = entry.isIntersecting;
+        isVisibleRef.current = inView;
+
+        if (inView) {
+          ringTweenRef.current?.play();
+          scheduleBlink();
+          wakeLoop();
+        } else {
+          ringTweenRef.current?.pause();
+          if (blinkTimeoutRef.current) clearTimeout(blinkTimeoutRef.current);
+          if (rafRef.current) {
+            cancelAnimationFrame(rafRef.current);
+            rafRef.current = null;
+          }
+          isLoopingRef.current = false;
+        }
+      },
+      { threshold: 0.05 }
+    );
+
+    observer.observe(el);
+
+    return () => {
+      observer.disconnect();
+      if (blinkTimeoutRef.current) clearTimeout(blinkTimeoutRef.current);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [scheduleBlink, wakeLoop]);
 
   // ── Mouse & Touch Tracking Listeners ──
   useEffect(() => {
@@ -159,23 +222,26 @@ export default function InteractiveCat({ className = "" }) {
 
     if (hasHover) {
       const onMouseMove = (e) => {
-        // Calculate normalized coordinates relative to window
+        if (!isVisibleRef.current) return;
         mouseRef.current.x = e.clientX / window.innerWidth;
         mouseRef.current.y = e.clientY / window.innerHeight;
+        wakeLoop();
       };
 
       window.addEventListener("mousemove", onMouseMove, { passive: true });
-      rafRef.current = requestAnimationFrame(animate);
-
       return () => {
         window.removeEventListener("mousemove", onMouseMove);
         if (rafRef.current) cancelAnimationFrame(rafRef.current);
       };
     }
 
-    // Touch devices: gentle organic autonomous sway
+    // Touch devices: gentle organic sway ONLY when in view
     let t = 0;
     const idleAnimate = () => {
+      if (!isVisibleRef.current) {
+        rafRef.current = null;
+        return;
+      }
       t += 0.025;
       const swayX = Math.sin(t) * 0.45;
       const swayY = Math.cos(t * 0.75) * 0.3;
@@ -188,11 +254,14 @@ export default function InteractiveCat({ className = "" }) {
       rafRef.current = requestAnimationFrame(idleAnimate);
     };
 
-    rafRef.current = requestAnimationFrame(idleAnimate);
+    if (isVisibleRef.current) {
+      rafRef.current = requestAnimationFrame(idleAnimate);
+    }
+
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [animate]);
+  }, [wakeLoop]);
 
   // ── Playful Squash & Stretch Bounce on Click ──
   const handleClick = () => {

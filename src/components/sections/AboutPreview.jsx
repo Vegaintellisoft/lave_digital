@@ -24,7 +24,7 @@ export default function AboutPreview() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="about-preview" data-theme="light" className="py-24 lg:py-32 relative">
+    <section ref={sectionRef} id="about-preview" data-theme="light" className="py-12 lg:py-16 relative">
       {/* Subtle glow top */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] gradient-glow pointer-events-none" />
 

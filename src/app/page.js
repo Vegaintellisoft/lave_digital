@@ -3,6 +3,7 @@ import StatsRibbon from "@/components/sections/StatsRibbon";
 import BrandPartners from "@/components/sections/BrandPartners";
 import AboutPreview from "@/components/sections/AboutPreview";
 import ServicesPreview from "@/components/sections/ServicesPreview";
+import CelebrityPartners from "@/components/sections/CelebrityPartners";
 import WorkPreview from "@/components/sections/WorkPreview";
 import ContentDistribution from "@/components/sections/ContentDistribution";
 // import FAQ from "@/components/sections/FAQ";
@@ -19,8 +20,9 @@ export default function Home() {
       <StatsRibbon />
 
       {/* Brands That Create Magic With Us */}
-      <ServicesPreview />
+      <CelebrityPartners />
       <AboutPreview />
+      <ServicesPreview />
       <BrandPartners />
 
       <WorkPreview />
