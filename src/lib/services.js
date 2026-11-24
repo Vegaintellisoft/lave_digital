@@ -17,6 +17,7 @@ export const services = [
       "Consistent Visual Identity",
     ],
     image: "/images/services/branding.jpg",
+    video: "/service_preview_video/Personal Branding_gwr_video_mvp.mp4",
     featuredWork: [
       {
         brand: "Star Briyani",
@@ -60,6 +61,7 @@ export const services = [
       "Packaging & Label Design",
     ],
     image: "/images/services/branding.jpg",
+    video: "/service_preview_video/Creative Branding_gwr_video_mvp.mp4",
     featuredWork: [
       {
         brand: "Page 3",
@@ -102,6 +104,7 @@ export const services = [
       "Performance Analytics & Campaign Optimization",
     ],
     image: "/images/services/branding.jpg",
+    video: "/service_preview_video/Digital Marketing_gwr_video_mvp.mp4",
     featuredWork: [
       {
         brand: "Arusuvai Arasu",
@@ -144,6 +147,7 @@ export const services = [
       "Event & Launch Collaborations",
     ],
     image: "/images/services/branding.jpg",
+    video: "/service_preview_video/Celebrity Partnerships_gwr_video_mvp.mp4",
     featuredWork: [
       {
         brand: "FICCI",
@@ -187,6 +191,7 @@ export const services = [
       "Event & Documentary Coverage",
     ],
     image: "/images/services/video.jpg",
+    video: "/service_preview_video/Video Creation_gwr_video_mvp.mp4",
     featuredWork: [
       {
         brand: "StartupTN",
