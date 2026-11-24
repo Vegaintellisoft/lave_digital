@@ -86,26 +86,16 @@ export default function ServicesPreview() {
             <div className="sp-service-body">
               {/* Video */}
               <div className="sp-service-image">
-                {service.video ? (
-                  <video
-                    src={service.video}
-                    className="sp-service-img"
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    preload={i < 2 ? "auto" : "none"}
-                    draggable={false}
-                  />
-                ) : (
-                  <img
-                    src={service.image}
-                    alt={service.title}
-                    className="sp-service-img"
-                    loading={i < 2 ? "eager" : "lazy"}
-                    draggable={false}
-                  />
-                )}
+                <video
+                  src={service.video}
+                  className="sp-service-img"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload={i < 2 ? "auto" : "none"}
+                  draggable={false}
+                />
                 <div className="sp-service-image-overlay" />
                 <div className="sp-service-image-badge">
                   <span>LV-{String(i + 1).padStart(2, "0")}</span>
